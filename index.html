@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal BDT Money Tracker</title>
+    <title>BDT Vault Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -13,112 +13,122 @@
             --text-muted: #a0a0a0;
             --border-color: #333333;
             --accent-expense: #ff6b6b;
-            --accent-loan: #fcc419;
+            --accent-loantaken: #fcc419;
+            --accent-loangiven: #cc5de8;
             --accent-savings: #4dadf7;
             --accent-earning: #51cf66;
             --accent-edit: #ff922b;
             --accent-balance: #a9e34b;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        header { text-align: center; margin-bottom: 30px; }
-        header h1 { font-weight: 300; font-size: 2rem; letter-spacing: 1px; }
+        /* Auth Screen Styling */
+        #auth-screen, #pw-change-screen { max-width: 400px; margin: 100px auto; background: var(--card-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 8px; text-align: center; }
+        .auth-input { width: 100%; padding: 10px; margin: 10px 0; background: #2a2a2a; border: 1px solid var(--border-color); color: white; border-radius: 4px; }
+        .auth-btn { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .auth-btn:hover { background: #444; }
 
-        /* Summary Cards */
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; text-align: center; }
-        .card h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
-        .card .amount { font-size: 1.5rem; font-weight: 600; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        header h1 { font-weight: 300; font-size: 1.8rem; }
+        
+        /* Summary Grid */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; text-align: center; }
+        .card h3 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
+        .card .amount { font-size: 1.3rem; font-weight: 600; }
         .card.balance { border-left: 4px solid var(--accent-balance); }
         .card.expense { border-left: 4px solid var(--accent-expense); }
-        .card.loan { border-left: 4px solid var(--accent-loan); }
+        .card.loantaken { border-left: 4px solid var(--accent-loantaken); }
+        .card.loangiven { border-left: 4px solid var(--accent-loangiven); }
         .card.savings { border-left: 4px solid var(--accent-savings); }
         .card.earning { border-left: 4px solid var(--accent-earning); }
 
-        /* Visualization and Form Grid */
         .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
         @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
         
-        .panel { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; position: relative; }
-        .panel h2 { font-size: 1.2rem; margin-bottom: 15px; font-weight: 400; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .panel { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; }
+        .panel h2 { font-size: 1.1rem; margin-bottom: 15px; font-weight: 400; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
 
-        /* Form Layout */
         form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         form input, form select, form button { background: #2a2a2a; border: 1px solid var(--border-color); color: var(--text-color); padding: 10px; border-radius: 4px; font-size: 0.9rem; width: 100%; }
-        form input:focus, form select:focus { border-color: #666; outline: none; }
         form .full-width { grid-column: span 2; }
-        form button { background: #333; cursor: pointer; transition: background 0.2s; font-weight: 600; }
-        form button:hover { background: #444; }
+        form button { background: #333; cursor: pointer; font-weight: 600; }
         form button.editing-mode { background: var(--accent-edit); color: #000; }
-        form button.editing-mode:hover { background: #e87e15; }
-        
-        /* Notice badge for editing state */
-        .edit-badge { display: none; background: var(--accent-edit); color: #000; padding: 2px 8px; font-size: 0.75rem; border-radius: 4px; margin-left: 10px; font-weight: bold; vertical-align: middle; }
 
-        /* Chart Canvas Wrapper */
         .chart-container { position: relative; height: 260px; width: 100%; display: flex; justify-content: center; }
 
-        /* Database Tables Section */
+        /* Tables & Tabs */
         .db-section { margin-top: 40px; }
-        .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
-        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 10px 20px; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); overflow-x: auto; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 10px 15px; cursor: pointer; font-size: 0.9rem; white-space: nowrap; }
         .tab-btn.active { color: var(--text-color); border-bottom: 2px solid var(--text-color); font-weight: 600; }
         
-        .table-wrapper { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; }
+        .table-wrapper { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border-color); }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
         th { color: var(--text-muted); font-weight: 500; }
-        tr:last-child td { border-bottom: none; }
         
         .delete-btn { background: none; border: none; color: var(--accent-expense); cursor: pointer; font-size: 0.8rem; }
         .edit-btn { background: none; border: none; color: var(--accent-edit); cursor: pointer; font-size: 0.8rem; margin-right: 8px; }
-        .mitigate-btn { background: none; border: none; color: var(--accent-loan); cursor: pointer; font-size: 0.8rem; margin-right: 8px; }
+        .manage-btn { background: #2a2a2a; border: 1px solid #444; color: var(--text-color); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+
+        /* Loan Adjustment Flow Blocks */
+        .loan-dashboard-box { display: none; margin-top: 20px; background: #161616; padding: 15px; border-radius: 6px; border-left: 3px solid #555; }
+        .loan-dashboard-box.active { display: block; }
+        .sub-flex { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<!-- Authentication Overlay UI -->
+<div id="auth-screen">
+    <h2>BDT Vault Sign In</h2>
+    <input type="text" id="login-user" class="auth-input" placeholder="Username">
+    <input type="password" id="login-pass" class="auth-input" placeholder="Password">
+    <button onclick="handleLogin()" class="auth-btn">Authorize</button>
+</div>
+
+<!-- Password Change UI Overlay (Initially Hidden) -->
+<div id="pw-change-screen" style="display:none;">
+    <h2>Change Credentials</h2>
+    <input type="password" id="new-pass" class="auth-input" placeholder="New Password">
+    <button onclick="commitPasswordChange()" class="auth-btn" style="margin-bottom: 10px;">Update</button>
+    <button onclick="hidePasswordScreen()" class="auth-btn" style="background:#555;">Back</button>
+</div>
+
+<!-- Main Secured Dashboard App Container -->
+<div id="app-workspace" style="display: none;" class="container">
     <header>
-        <h1>৳ BDT Wealth Tracker</h1>
+        <h1>৳ BDT Wealth Ledger</h1>
+        <div>
+            <button onclick="showPasswordScreen()" class="manage-btn" style="margin-right: 10px;">Settings ⚙</button>
+            <button onclick="handleLogout()" class="manage-btn" style="color:var(--accent-expense)">Exit</button>
+        </div>
     </header>
 
+    <!-- Top-Level Balance Metrics Cards -->
     <div class="summary-grid">
-        <div class="card balance">
-            <h3>Available Balance</h3>
-            <div class="amount" id="sum-balance">৳0</div>
-        </div>
-        <div class="card earning">
-            <h3>Total Earnings</h3>
-            <div class="amount" id="sum-earning">৳0</div>
-        </div>
-        <div class="card expense">
-            <h3>Total Expenses</h3>
-            <div class="amount" id="sum-expense">৳0</div>
-        </div>
-        <div class="card loan">
-            <h3>Active Loans</h3>
-            <div class="amount" id="sum-loan">৳0</div>
-        </div>
-        <div class="card savings">
-            <h3>Total Savings</h3>
-            <div class="amount" id="sum-savings">৳0</div>
-        </div>
+        <div class="card balance"><h3>Liquidity Balance</h3><div class="amount" id="sum-balance">৳0</div></div>
+        <div class="card earning"><h3>Total Earnings</h3><div class="amount" id="sum-earning">৳0</div></div>
+        <div class="card expense"><h3>Total Expenses</h3><div class="amount" id="sum-expense">৳0</div></div>
+        <div class="card loantaken"><h3>Owed (Loan Taken)</h3><div class="amount" id="sum-loantaken">৳0</div></div>
+        <div class="card loangiven"><h3>Receivable (Given)</h3><div class="amount" id="sum-loangiven">৳0</div></div>
+        <div class="card savings"><h3>Vault Savings</h3><div class="amount" id="sum-savings">৳0</div></div>
     </div>
 
     <div class="main-grid">
+        <!-- Recording Entry Form -->
         <div class="panel">
-            <h2>
-                <span id="form-title-text">Add New Record</span>
-                <span id="edit-indicator" class="edit-badge">EDITING</span>
-            </h2>
+            <h2><span id="form-title-text">Add New Record</span></h2>
             <form id="finance-form">
                 <div class="full-width">
                     <select id="type-select" onchange="adjustFormFields()">
                         <option value="expense">Expense</option>
-                        <option value="loan">Loan</option>
+                        <option value="loantaken">Loan Taken</option>
+                        <option value="loangiven">Loan Given</option>
                         <option value="savings">Savings</option>
                         <option value="earning">Earning</option>
                     </select>
@@ -127,204 +137,273 @@
                 <input type="number" id="amount" placeholder="Amount (BDT)" required min="1">
                 <input type="date" id="entry-date" required>
                 
-                <div class="full-width" style="display: flex; gap: 5px;">
-                    <input type="text" id="category-input" list="category-list" placeholder="Category" required autocomplete="off">
+                <div class="full-width">
+                    <input type="text" id="category-input" list="category-list" placeholder="Category Name / Entity" required autocomplete="off">
                     <datalist id="category-list"></datalist>
                 </div>
 
-                <div id="conditional-fields" class="full-width" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                    </div>
-
                 <button type="submit" id="submit-btn" class="full-width">Save Entry</button>
-                <button type="button" id="cancel-edit-btn" class="full-width" style="display:none; background:#444;" onclick="cancelEditing()">Cancel Edit</button>
+                <button type="button" id="cancel-edit-btn" class="full-width" style="display:none; background:#444;" onclick="cancelEditing()">Cancel Operation</button>
             </form>
         </div>
 
+        <!-- Doughnut Analytics Visual Chart Component -->
         <div class="panel">
-            <h2>Financial Breakdown</h2>
-            <div class="chart-container">
-                <canvas id="mainChart"></canvas>
-            </div>
+            <h2>Financial Mix Distribution</h2>
+            <div class="chart-container"><canvas id="mainChart"></canvas></div>
         </div>
     </div>
 
+    <!-- Independent Action Dashboards for Partial Reduction Management -->
+    <div id="sub-dashboard-section"></div>
+
+    <!-- Dynamic Database Tables Section Framework Layout -->
     <div class="db-section">
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab('expense')">Expenses</button>
-            <button class="tab-btn" onclick="switchTab('loan')">Loans</button>
+            <button class="tab-btn" onclick="switchTab('loantaken')">Loans Taken</button>
+            <button class="tab-btn" onclick="switchTab('loangiven')">Loans Given</button>
             <button class="tab-btn" onclick="switchTab('savings')">Savings</button>
             <button class="tab-btn" onclick="switchTab('earning')">Earnings</button>
-            <button class="tab-btn" onclick="switchTab('categories')">Category Summary</button>
+            <button class="tab-btn" onclick="switchTab('categories')">Category Matrix</button>
+            <button class="tab-btn" onclick="switchTab('yearwise')">Yearwise Matrix</button>
         </div>
-
-        <div class="table-wrapper" id="table-container">
-            </div>
+        <div class="table-wrapper" id="table-container"></div>
     </div>
 </div>
 
 <script>
-    // App State Core Database
-    let records = JSON.parse(localStorage.getItem('bdt_records')) || [];
-    let categories = JSON.parse(localStorage.getItem('bdt_categories')) || {
-        expense: [], loan: [], savings: [], earning: []
-    };
-    
+    // Authentication State Management Initialization Core Engine
+    if(!localStorage.getItem('vault_pass')) {
+        localStorage.setItem('vault_user', 'azad');
+        localStorage.setItem('vault_pass', '102333');
+    }
+
+    let records = JSON.parse(localStorage.getItem('v_records')) || [];
+    let categories = JSON.parse(localStorage.getItem('v_categories')) || { expense: [], loantaken: [], loangiven: [], savings: [], earning: [] };
     let currentTab = 'expense';
     let myChart = null;
     let editingRecordId = null;
+    let activeLoanDashboardId = null; // ID of loan selected for payment/collection adjustments
 
-    // Form Field Condition Configuration
-    function adjustFormFields() {
-        const type = document.getElementById('type-select').value;
-        const container = document.getElementById('conditional-fields');
-        
-        const existingSecondaryDateValue = document.getElementById('secondary-date') ? document.getElementById('secondary-date').value : '';
-        container.innerHTML = '';
-        
-        // Refresh Category Datalist Autofill Options
-        const datalist = document.getElementById('category-list');
-        datalist.innerHTML = '';
-        categories[type].forEach(cat => {
-            let option = document.createElement('option');
-            option.value = cat;
-            datalist.appendChild(option);
-        });
-
-        // Add conditional date logic requested for loans only
-        if (type === 'loan') {
-            container.innerHTML = '<label style="font-size:0.8rem; color:var(--text-muted)">Mitigation Date (Optional):</label><input type="date" id="secondary-date">';
-            if(existingSecondaryDateValue) document.getElementById('secondary-date').value = existingSecondaryDateValue;
+    function handleLogin() {
+        const user = document.getElementById('login-user').value;
+        const pass = document.getElementById('login-pass').value;
+        if(user === localStorage.getItem('vault_user') && pass === localStorage.getItem('vault_pass')) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-workspace').style.display = 'block';
+            saveAndRender();
+        } else {
+            alert('Security access unauthorized. Key parameters mismatched.');
         }
     }
 
-    // Set standard default date to today
+    function handleLogout() {
+        document.getElementById('app-workspace').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'block';
+        document.getElementById('login-user').value = '';
+        document.getElementById('login-pass').value = '';
+    }
+
+    function showPasswordScreen() {
+        document.getElementById('app-workspace').style.display = 'none';
+        document.getElementById('pw-change-screen').style.display = 'block';
+    }
+
+    function hidePasswordScreen() {
+        document.getElementById('pw-change-screen').style.display = 'none';
+        document.getElementById('app-workspace').style.display = 'block';
+    }
+
+    function commitPasswordChange() {
+        const val = document.getElementById('new-pass').value;
+        if(val.trim().length >= 4) {
+            localStorage.setItem('vault_pass', val.trim());
+            alert('Security credentials modified successfully.');
+            hidePasswordScreen();
+        } else {
+            alert('Password constraint rejected. Minimum 4 character length rule applies.');
+        }
+    }
+
+    function adjustFormFields() {
+        const type = document.getElementById('type-select').value;
+        const datalist = document.getElementById('category-list');
+        datalist.innerHTML = '';
+        if (categories[type]) {
+            categories[type].forEach(cat => {
+                let option = document.createElement('option');
+                option.value = cat;
+                datalist.appendChild(option);
+            });
+        }
+    }
+
     document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
 
-    // Form Submit Event Handler (Handles both Save and Update)
     document.getElementById('finance-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        
         const type = document.getElementById('type-select').value;
         const amount = parseFloat(document.getElementById('amount').value);
         const entryDate = document.getElementById('entry-date').value;
         const category = document.getElementById('category-input').value.trim();
-        const secondaryDateInput = document.getElementById('secondary-date');
-        const secondaryDate = secondaryDateInput ? secondaryDateInput.value : '';
 
-        if(!category) return;
-
-        if (!categories[type].includes(category)) {
+        if(!categories[type].includes(category)) {
             categories[type].push(category);
-            localStorage.setItem('bdt_categories', JSON.stringify(categories));
+            localStorage.setItem('v_categories', JSON.stringify(categories));
         }
 
         if (editingRecordId !== null) {
-            // EDITING EXISTING ENTRY MODE
             records = records.map(r => {
                 if (r.id === editingRecordId) {
-                    return {
-                        ...r,
-                        type,
-                        amount,
-                        entryDate,
-                        category,
-                        secondaryDate: type === 'loan' ? (secondaryDate || null) : entryDate
-                    };
+                    return { ...r, type, amount, entryDate, category };
                 }
                 return r;
             });
             editingRecordId = null;
-            
             document.getElementById('form-title-text').innerText = "Add New Record";
-            document.getElementById('edit-indicator').style.display = "none";
             document.getElementById('submit-btn').innerText = "Save Entry";
-            document.getElementById('submit-btn').classList.remove('editing-mode');
             document.getElementById('cancel-edit-btn').style.display = "none";
             document.getElementById('type-select').disabled = false;
         } else {
-            // ADD NEW ENTRY MODE
-            const record = {
-                id: Date.now(),
-                type,
-                amount,
-                entryDate,
-                category,
-                secondaryDate: type === 'earning' ? entryDate : (secondaryDate || null)
-            };
+            const record = { id: Date.now(), type, amount, entryDate, category, tracks: [] };
             records.push(record);
         }
 
         saveAndRender();
-        
         document.getElementById('amount').value = '';
         document.getElementById('category-input').value = '';
-        document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
         adjustFormFields();
     });
 
-    // Enter Editing Mode Function
     function startEdit(id) {
         const record = records.find(r => r.id === id);
         if (!record) return;
-
         editingRecordId = id;
-
         document.getElementById('type-select').value = record.type;
-        document.getElementById('type-select').disabled = true; 
+        document.getElementById('type-select').disabled = true;
         adjustFormFields();
-
         document.getElementById('amount').value = record.amount;
         document.getElementById('entry-date').value = record.entryDate;
         document.getElementById('category-input').value = record.category;
         
-        if (record.secondaryDate && document.getElementById('secondary-date') && record.type === 'loan') {
-            document.getElementById('secondary-date').value = record.secondaryDate;
-        }
-
         document.getElementById('form-title-text').innerText = "Modify Record";
-        document.getElementById('edit-indicator').style.display = "inline-block";
         document.getElementById('submit-btn').innerText = "Update Entry";
-        document.getElementById('submit-btn').classList.add('editing-mode');
         document.getElementById('cancel-edit-btn').style.display = "block";
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Cancel Editing Routine
     function cancelEditing() {
         editingRecordId = null;
         document.getElementById('form-title-text').innerText = "Add New Record";
-        document.getElementById('edit-indicator').style.display = "none";
         document.getElementById('submit-btn').innerText = "Save Entry";
-        document.getElementById('submit-btn').classList.remove('editing-mode');
         document.getElementById('cancel-edit-btn').style.display = "none";
         document.getElementById('type-select').disabled = false;
-
         document.getElementById('amount').value = '';
         document.getElementById('category-input').value = '';
-        document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
-        adjustFormFields();
     }
 
-    // Fail-safe Deletion Trigger
     function deleteRecord(id) {
-        if (confirm("Are you sure you want to permanently delete this BDT entry?")) {
+        if (confirm("Permanently destroy this financial entity record log entry?")) {
             if (editingRecordId === id) cancelEditing();
+            if (activeLoanDashboardId === id) activeLoanDashboardId = null;
             records = records.filter(r => r.id !== id);
             saveAndRender();
         }
     }
 
-    function toggleLoanMitigation(id) {
+    // Secondary Partial Installment Execution Logic Adjustments Handler
+    function showLoanDashboard(id) {
+        activeLoanDashboardId = id;
+        renderLoanAdjustmentPanel();
+        window.scrollTo({ top: document.getElementById('sub-dashboard-section').offsetTop, behavior: 'smooth' });
+    }
+
+    function closeLoanDashboard() {
+        activeLoanDashboardId = null;
+        renderLoanAdjustmentPanel();
+    }
+
+    function addLoanReduction(id) {
         const record = records.find(r => r.id === id);
+        const redAmt = parseFloat(document.getElementById('sub-adj-amount').value);
+        const redDate = document.getElementById('sub-adj-date').value;
+        
+        if(!redAmt || redAmt <= 0 || !redDate) return;
+        
+        let totalReduced = record.tracks.reduce((sum, t) => sum + t.amount, 0);
+        if(totalReduced + redAmt > record.amount) {
+            alert('Validation Error: Adjustments exceeding nominal remaining book asset principles.');
+            return;
+        }
+
+        record.tracks.push({ id: Date.now(), amount: redAmt, date: redDate });
+        saveAndRender();
+        renderLoanAdjustmentPanel();
+    }
+
+    function deleteLoanReduction(recordId, trackId) {
+        const record = records.find(r => r.id === recordId);
         if(record) {
-            record.secondaryDate = record.secondaryDate ? null : new Date().toISOString().split('T')[0];
+            record.tracks = record.tracks.filter(t => t.id !== trackId);
             saveAndRender();
+            renderLoanAdjustmentPanel();
         }
     }
 
+    function renderLoanAdjustmentPanel() {
+        const sec = document.getElementById('sub-dashboard-section');
+        if(!activeLoanDashboardId) {
+            sec.innerHTML = '';
+            return;
+        }
+        const record = records.find(r => r.id === activeLoanDashboardId);
+        if(!record || (record.type !== 'loantaken' && record.type !== 'loangiven')) {
+            sec.innerHTML = '';
+            return;
+        }
+
+        let totalReduced = record.tracks.reduce((sum, t) => sum + t.amount, 0);
+        let balanceRemaining = record.amount - totalReduced;
+        const isTaken = record.type === 'loantaken';
+        
+        let actionLabel = isTaken ? "Reduction / Mitigation Payment" : "Receival Credit Entry";
+
+        let tracksHtml = '';
+        record.tracks.forEach(t => {
+            tracksHtml += `<tr>
+                <td>${t.date}</td>
+                <td>৳${t.amount.toLocaleString()}</td>
+                <td><button class="delete-btn" onclick="deleteLoanReduction(${record.id}, ${t.id})">Remove</button></td>
+            </tr>`;
+        });
+
+        sec.innerHTML = `
+            <div class="panel loan-dashboard-box active">
+                <h2>Manage Segment System: ${isTaken ? 'Loan Taken' : 'Loan Given'} [${record.category}]</h2>
+                <p>Principal Base: <strong>৳${record.amount.toLocaleString()}</strong> | Outstanding Principle: <strong style="color:var(--accent-edit)">৳${balanceRemaining.toLocaleString()}</strong></p>
+                
+                <div class="sub-flex">
+                    <input type="number" id="sub-adj-amount" placeholder="Amount (BDT)" style="background:#2a2a2a; border:1px solid #444; padding:8px; color:white; border-radius:4px;">
+                    <input type="date" id="sub-adj-date" value="${new Date().toISOString().split('T')[0]}" style="background:#2a2a2a; border:1px solid #444; padding:8px; color:white; border-radius:4px;">
+                    <button class="manage-btn" style="background:var(--accent-balance); color:black;" onclick="addLoanReduction(${record.id})">Post ${actionLabel}</button>
+                    <button class="manage-btn" onclick="closeLoanDashboard()">Close Dashboard</button>
+                </div>
+
+                <div class="table-wrapper" style="margin-top:15px; background:#222;">
+                    <table>
+                        <thead><tr><th>Transaction Date</th><th>Value Amount Applied</th><th>Control</th></tr></thead>
+                        <tbody>
+                            ${tracksHtml || '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No partial tracks processed against principle pool.</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
     function saveAndRender() {
-        localStorage.setItem('bdt_records', JSON.stringify(records));
+        localStorage.setItem('v_records', JSON.stringify(records));
         calculateFinances();
         renderTable();
         renderChart();
@@ -337,27 +416,34 @@
         renderTable();
     }
 
-    // Core Calculation Logic with updated auto-encash rules
+    // Core Calculation Logic Matrix
     function calculateFinances() {
-        let totalEarnings = 0;
-        let totalExpenses = 0;
-        let activeLoans = 0;
-        let totalSavings = 0;
-        let trackingBalance = 0;
+        let totalEarnings = 0, totalExpenses = 0, totalSavings = 0;
+        let activeLoanTakenBase = 0, activeLoanGivenBase = 0;
+        
+        let trackingBalance = 0; // Pure liquid vault pool asset assets
 
         records.forEach(r => {
+            let totalReduced = r.tracks ? r.tracks.reduce((sum, t) => sum + t.amount, 0) : 0;
+            
             if (r.type === 'earning') {
                 totalEarnings += r.amount;
                 trackingBalance += r.amount; 
             } else if (r.type === 'expense') {
                 totalExpenses += r.amount;
                 trackingBalance -= r.amount; 
-            } else if (r.type === 'loan') {
-                if (!r.secondaryDate) {
-                    activeLoans += r.amount; 
-                } else {
-                    trackingBalance -= r.amount; 
-                }
+            } else if (r.type === 'loantaken') {
+                activeLoanTakenBase += (r.amount - totalReduced);
+                // Cash received from taking a loan increases wallet balance instantly
+                trackingBalance += r.amount; 
+                // Any repayments reduce our cash balance
+                trackingBalance -= totalReduced;
+            } else if (r.type === 'loangiven') {
+                activeLoanGivenBase += (r.amount - totalReduced);
+                // Cash given out reduces our wallet balance instantly
+                trackingBalance -= r.amount; 
+                // Any collections received back increase our cash balance
+                trackingBalance += totalReduced;
             } else if (r.type === 'savings') {
                 totalSavings += r.amount;
             }
@@ -366,142 +452,115 @@
         document.getElementById('sum-balance').innerText = `৳${trackingBalance.toLocaleString()}`;
         document.getElementById('sum-earning').innerText = `৳${totalEarnings.toLocaleString()}`;
         document.getElementById('sum-expense').innerText = `৳${totalExpenses.toLocaleString()}`;
-        document.getElementById('sum-loan').innerText = `৳${activeLoans.toLocaleString()}`;
+        document.getElementById('sum-loantaken').innerText = `৳${activeLoanTakenBase.toLocaleString()}`;
+        document.getElementById('sum-loangiven').innerText = `৳${activeLoanGivenBase.toLocaleString()}`;
         document.getElementById('sum-savings').innerText = `৳${totalSavings.toLocaleString()}`;
 
-        return { totalExpenses, activeLoans, totalSavings, totalEarnings, trackingBalance };
+        return { totalExpenses, activeLoanTakenBase, activeLoanGivenBase, totalSavings, totalEarnings };
     }
 
-    // Render Data Logs & Cumulative Category Matrix Databases
     function renderTable() {
         const container = document.getElementById('table-container');
         
         if (currentTab === 'categories') {
             let catSummary = {};
-            let globalExpenses = 0, globalLoans = 0, globalSavings = 0, globalEarnings = 0, globalNetBalance = 0;
-
             records.forEach(r => {
-                if(!catSummary[r.category]) {
-                    catSummary[r.category] = { expense: 0, loan: 0, mitigatedLoan: 0, savings: 0, earning: 0 };
-                }
-                
-                if (r.type === 'loan') {
-                    catSummary[r.category].loan += r.amount;
-                    if (r.secondaryDate) {
-                        catSummary[r.category].mitigatedLoan += r.amount;
-                    }
+                if(!catSummary[r.category]) catSummary[r.category] = { expense: 0, loantaken: 0, loangiven: 0, savings: 0, earning: 0 };
+                if(r.type === 'loantaken' || r.type === 'loangiven') {
+                    let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                    catSummary[r.category][r.type] += (r.amount - totalReduced);
                 } else {
                     catSummary[r.category][r.type] += r.amount;
                 }
             });
 
-            let html = `<table><thead><tr>
-                <th>Category Name</th>
-                <th>Expenses (৳)</th>
-                <th>Active Loans (৳)</th>
-                <th>Savings (৳)</th>
-                <th>Earnings (৳)</th>
-                <th>Net Balance (৳)</th>
-            </tr></thead><tbody>`;
-            
+            let html = `<table><thead><tr><th>Entity Category Matrix</th><th>Expenses</th><th>Loan Taken</th><th>Loan Given</th><th>Savings</th><th>Earnings</th></tr></thead><tbody>`;
             for (let cat in catSummary) {
-                // Calculate Category Wise Balance: Earnings - Expenses - Mitigated Loans
-                let catNetBalance = catSummary[cat].earning - catSummary[cat].expense - catSummary[cat].mitigatedLoan;
-                let activeOutstandingLoans = catSummary[cat].loan - catSummary[cat].mitigatedLoan;
-
-                // Tally Global Columns
-                globalExpenses += catSummary[cat].expense;
-                globalLoans += activeOutstandingLoans;
-                globalSavings += catSummary[cat].savings;
-                globalEarnings += catSummary[cat].earning;
-                globalNetBalance += catNetBalance;
-
                 html += `<tr>
                     <td><strong>${cat}</strong></td>
-                    <td style="color:var(--accent-expense)">${catSummary[cat].expense.toLocaleString()}</td>
-                    <td style="color:var(--accent-loan)">${activeOutstandingLoans.toLocaleString()}</td>
-                    <td style="color:var(--accent-savings)">${catSummary[cat].savings.toLocaleString()}</td>
-                    <td style="color:var(--accent-earning)">${catSummary[cat].earning.toLocaleString()}</td>
-                    <td style="color:var(--accent-balance); font-weight: 600;">${catNetBalance.toLocaleString()}</td>
+                    <td style="color:var(--accent-expense)">৳${catSummary[cat].expense.toLocaleString()}</td>
+                    <td style="color:var(--accent-loantaken)">৳${catSummary[cat].loantaken.toLocaleString()}</td>
+                    <td style="color:var(--accent-loangiven)">৳${catSummary[cat].loangiven.toLocaleString()}</td>
+                    <td style="color:var(--accent-savings)">৳${catSummary[cat].savings.toLocaleString()}</td>
+                    <td style="color:var(--accent-earning)">৳${catSummary[cat].earning.toLocaleString()}</td>
                 </tr>`;
             }
-
-            // Global Summary Metrics Bottom Cumulative Row
-            if (Object.keys(catSummary).length === 0) {
-                html += `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No records found. Create entries to generate matrix summaries.</td></tr>`;
-            } else {
-                html += `<tr style="background:#252525; font-weight:bold; border-top: 2px solid var(--border-color);">
-                    <td>Global Totals</td>
-                    <td style="color:var(--accent-expense)">৳${globalExpenses.toLocaleString()}</td>
-                    <td style="color:var(--accent-loan)">৳${globalLoans.toLocaleString()}</td>
-                    <td style="color:var(--accent-savings)">৳${globalSavings.toLocaleString()}</td>
-                    <td style="color:var(--accent-earning)">৳${globalEarnings.toLocaleString()}</td>
-                    <td style="color:var(--accent-balance)">৳${globalNetBalance.toLocaleString()}</td>
-                </tr>`;
-            }
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
+            container.innerHTML = html + '</tbody></table>';
             return;
         }
 
-        // Standard Ledger Tables View 
+        if (currentTab === 'yearwise') {
+            let yearSummary = {};
+            records.forEach(r => {
+                let year = r.entryDate ? r.entryDate.split('-')[0] : 'Unknown';
+                if(!yearSummary[year]) yearSummary[year] = { expense: 0, loantaken: 0, loangiven: 0, savings: 0, earning: 0 };
+                
+                if(r.type === 'loantaken' || r.type === 'loangiven') {
+                    let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                    yearSummary[year][r.type] += (r.amount - totalReduced);
+                } else {
+                    yearSummary[year][r.type] += r.amount;
+                }
+            });
+
+            let html = `<table><thead><tr><th>Calendar Fiscal Year</th><th>Expenses</th><th>Loan Taken (Net)</th><th>Loan Given (Net)</th><th>Savings</th><th>Earnings</th></tr></thead><tbody>`;
+            for (let yr in yearSummary) {
+                html += `<tr>
+                    <td><strong>${yr}</strong></td>
+                    <td style="color:var(--accent-expense)">৳${yearSummary[yr].expense.toLocaleString()}</td>
+                    <td style="color:var(--accent-loantaken)">৳${yearSummary[yr].loantaken.toLocaleString()}</td>
+                    <td style="color:var(--accent-loangiven)">৳${yearSummary[yr].loangiven.toLocaleString()}</td>
+                    <td style="color:var(--accent-savings)">৳${yearSummary[yr].savings.toLocaleString()}</td>
+                    <td style="color:var(--accent-earning)">৳${yearSummary[yr].earning.toLocaleString()}</td>
+                </tr>`;
+            }
+            container.innerHTML = html + '</tbody></table>';
+            return;
+        }
+
+        // Standard Ledger View Tab Output Generators
         let filtered = records.filter(r => r.type === currentTab);
-        let totalSum = filtered.reduce((sum, r) => sum + r.amount, 0);
+        let isLoanType = currentTab === 'loantaken' || currentTab === 'loangiven';
 
         let html = `<table><thead><tr>
             <th>Date</th>
-            <th>Category</th>
-            <th>Amount</th>
-            ${currentTab === 'loan' ? '<th>Mitigated Date</th>' : ''}
-            <th>Action Matrix Control</th>
+            <th>Category / Target</th>
+            <th>Principal Pool</th>
+            ${isLoanType ? '<th>Remaining Owed Balance</th>' : ''}
+            <th>Controls Mapping</th>
         </tr></thead><tbody>`;
 
         filtered.forEach(r => {
-            let statusActionBtn = '';
-            if (currentTab === 'loan') {
-                statusActionBtn = `<button class="mitigate-btn" onclick="toggleLoanMitigation(${r.id})">${r.secondaryDate ? '✕ Activating' : '✓ Mitigate'}</button>`;
+            let innerLoanCalcHtml = '';
+            let secondaryDashboardAction = '';
+            
+            if(isLoanType) {
+                let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                let rem = r.amount - totalReduced;
+                innerLoanCalcHtml = `<td>৳${rem.toLocaleString()} ${rem===0 ? '<span style="color:var(--accent-balance); font-size:0.75rem;">[Mitigated]</span>':''}</td>`;
+                secondaryDashboardAction = `<button class="manage-btn" onclick="showLoanDashboard(${r.id})">Adjustments Ledger</button>`;
             }
 
             html += `<tr>
                 <td>${r.entryDate}</td>
                 <td>${r.category}</td>
-                <td><strong>৳${r.amount.toLocaleString()}</strong></td>
-                ${currentTab === 'loan' ? `<td>${r.secondaryDate ? r.secondaryDate : '<span style="color:var(--accent-loan)">Active</span>'}</td>` : ''}
+                <td>৳${r.amount.toLocaleString()}</td>
+                ${innerLoanCalcHtml}
                 <td>
-                    ${statusActionBtn}
+                    ${secondaryDashboardAction}
                     <button class="edit-btn" onclick="startEdit(${r.id})">Edit</button>
                     <button class="delete-btn" onclick="deleteRecord(${r.id})">Delete</button>
                 </td>
             </tr>`;
         });
 
-        if(filtered.length === 0) {
-            html += `<tr><td colspan="${currentTab === 'loan' ? '5' : '4'}" style="text-align:center; color:var(--text-muted);">No records found under this macro category.</td></tr>`;
-        } else {
-            html += `<tr style="background:#252525; font-weight:bold;">
-                <td>Cumulative Total</td>
-                <td>—</td>
-                <td colspan="${currentTab==='loan' ? '2' : '1'}">৳${totalSum.toLocaleString()}</td>
-                <td>—</td>
-            </tr>`;
-        }
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        container.innerHTML = html + '</tbody></table>';
     }
 
-    // Graphical Representation Engine (Chart.js implementation)
     function renderChart() {
-        const dataMetrics = calculateFinances();
+        const d = calculateFinances();
         const ctx = document.getElementById('mainChart').getContext('2d');
-        
-        const chartData = [
-            dataMetrics.totalExpenses, 
-            dataMetrics.activeLoans, 
-            dataMetrics.totalSavings, 
-            dataMetrics.totalEarnings
-        ];
+        const chartData = [d.totalExpenses, d.activeLoanTakenBase, d.activeLoanGivenBase, d.totalSavings, d.totalEarnings];
 
         if (myChart) {
             myChart.data.datasets[0].data = chartData;
@@ -510,10 +569,10 @@
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Expenses', 'Active Loans', 'Savings', 'Earnings'],
+                    labels: ['Expenses', 'Loans Taken', 'Loans Given', 'Savings', 'Earnings'],
                     datasets: [{
                         data: chartData,
-                        backgroundColor: ['#ff6b6b', '#fcc419', '#4dadf7', '#51cf66'],
+                        backgroundColor: ['#ff6b6b', '#fcc419', '#cc5de8', '#4dadf7', '#51cf66'],
                         borderWidth: 2,
                         borderColor: '#1e1e1e'
                     }]
@@ -521,20 +580,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#e0e0e0', font: { size: 12 } }
-                        }
-                    }
+                    plugins: { legend: { position: 'bottom', labels: { color: '#e0e0e0', font: { size: 11 } } } }
                 }
             });
         }
     }
 
-    // Initialize components on load
     adjustFormFields();
-    saveAndRender();
 </script>
 </body>
 </html>
