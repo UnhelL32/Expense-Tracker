@@ -27,8 +27,8 @@
         
         /* Auth Screen Styling */
         #auth-screen, #pw-change-screen { max-width: 400px; margin: 100px auto; background: var(--card-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 8px; text-align: center; }
-        .auth-input { width: 100%; padding: 10px; margin: 10px 0; background: #2a2a2a; border: 1px solid var(--border-color); color: white; border-radius: 4px; }
-        .auth-btn { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .auth-input { width: 100%; padding: 10px; margin: 10px 0; background: #2a2a2a; border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 1rem; }
+        .auth-btn { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1rem; margin-top: 10px; }
         .auth-btn:hover { background: #444; }
 
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
@@ -85,9 +85,11 @@
 
 <div id="auth-screen">
     <h2>BDT Vault Sign In</h2>
-    <input type="text" id="login-user" class="auth-input" placeholder="Username">
-    <input type="password" id="login-pass" class="auth-input" placeholder="Password">
-    <button onclick="handleLogin()" class="auth-btn">Authorize</button>
+    <form id="auth-form">
+        <input type="text" id="login-user" class="auth-input" placeholder="Username" required autocomplete="username">
+        <input type="password" id="login-pass" class="auth-input" placeholder="Password" required autocomplete="current-password">
+        <button type="submit" class="auth-btn">Authorize</button>
+    </form>
 </div>
 
 <div id="pw-change-screen" style="display:none;">
@@ -152,23 +154,23 @@
 
     <div class="db-section">
         <div class="tab-buttons">
-            <button class="tab-btn active" onclick="switchTab('expense')">Expenses</button>
-            <button class="tab-btn" onclick="switchTab('loantaken')">Loans Taken</button>
-            <button class="tab-btn" onclick="switchTab('loangiven')">Loans Given</button>
-            <button class="tab-btn" onclick="switchTab('savings')">Savings</button>
-            <button class="tab-btn" onclick="switchTab('earning')">Earnings</button>
-            <button class="tab-btn" onclick="switchTab('categories')">Category Matrix</button>
-            <button class="tab-btn" onclick="switchTab('yearwise')">Yearwise Matrix</button>
+            <button class="tab-btn active" id="tab-btn-expense" onclick="switchTab('expense')">Expenses</button>
+            <button class="tab-btn" id="tab-btn-loantaken" onclick="switchTab('loantaken')">Loans Taken</button>
+            <button class="tab-btn" id="tab-btn-loangiven" onclick="switchTab('loangiven')">Loans Given</button>
+            <button class="tab-btn" id="tab-btn-savings" onclick="switchTab('savings')">Savings</button>
+            <button class="tab-btn" id="tab-btn-earning" onclick="switchTab('earning')">Earnings</button>
+            <button class="tab-btn" id="tab-btn-categories" onclick="switchTab('categories')">Category Matrix</button>
+            <button class="tab-btn" id="tab-btn-yearwise" onclick="switchTab('yearwise')">Yearwise Matrix</button>
         </div>
         <div class="table-wrapper" id="table-container"></div>
     </div>
 </div>
 
 <script>
-    // Authentication State Management Initialization Core Engine
-    if(!localStorage.getItem('vault_pass')) {
+    if(!localStorage.getItem('v_setup_complete')) {
         localStorage.setItem('vault_user', 'azad');
-        localStorage.setItem('vault_pass', '102333');
+        localStorage.setItem('vault_pass', '1234');
+        localStorage.setItem('v_setup_complete', 'true');
     }
 
     let records = JSON.parse(localStorage.getItem('v_records')) || [];
@@ -178,17 +180,20 @@
     let editingRecordId = null;
     let activeLoanDashboardId = null; 
 
-    function handleLogin() {
-        const user = document.getElementById('login-user').value;
-        const pass = document.getElementById('login-pass').value;
+    // Form-Intercept Authorization Controller
+    document.getElementById('auth-form').addEventListener('submit', function(e) {
+        e.preventDefault(); 
+        const user = document.getElementById('login-user').value.trim();
+        const pass = document.getElementById('login-pass').value.trim();
+        
         if(user === localStorage.getItem('vault_user') && pass === localStorage.getItem('vault_pass')) {
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('app-workspace').style.display = 'block';
-            saveAndRender();
+            saveAndRender(); 
         } else {
             alert('Security access unauthorized. Key parameters mismatched.');
         }
-    }
+    });
 
     function handleLogout() {
         document.getElementById('app-workspace').style.display = 'none';
@@ -197,7 +202,6 @@
         document.getElementById('login-pass').value = '';
     }
 
-    // Settings Configuration Panel toggles
     function showPasswordScreen() {
         document.getElementById('app-workspace').style.display = 'none';
         document.getElementById('pw-change-screen').style.display = 'block';
@@ -311,15 +315,6 @@
         window.scrollTo({ top: document.getElementById('sub-dashboard-section').offsetTop, behavior: 'smooth' });
     }
 
-    document.addEventListener("click", function(e) {
-        if (e.target && e.target.id === "sub-adj-btn-trigger") {
-            const id = parseInt(e.target.dataset.recordid);
-            addLoanReduction(id);
-        } else if (e.target && e.target.id === "sub-adj-btn-close") {
-            closeLoanDashboard();
-        }
-    });
-
     function closeLoanDashboard() {
         activeLoanDashboardId = null;
         renderLoanAdjustmentPanel();
@@ -327,10 +322,15 @@
 
     function addLoanReduction(id) {
         const record = records.find(r => r.id === id);
+        if(!record) return;
+
         const redAmt = parseFloat(document.getElementById('sub-adj-amount').value);
         const redDate = document.getElementById('sub-adj-date').value;
         
-        if(!redAmt || redAmt <= 0 || !redDate) return;
+        if(!redAmt || redAmt <= 0 || !redDate) {
+            alert('Please specify a valid amount and tracking date adjustment parameters.');
+            return;
+        }
         
         let totalReduced = record.tracks.reduce((sum, t) => sum + t.amount, 0);
         if(totalReduced + redAmt > record.amount) {
@@ -387,12 +387,208 @@
                 <div class="sub-flex">
                     <input type="number" id="sub-adj-amount" placeholder="Amount (BDT)" style="background:#2a2a2a; border:1px solid #444; padding:8px; color:white; border-radius:4px;">
                     <input type="date" id="sub-adj-date" value="${new Date().toISOString().split('T')[0]}" style="background:#2a2a2a; border:1px solid #444; padding:8px; color:white; border-radius:4px;">
-                    <button class="manage-btn" id="sub-adj-btn-trigger" data-recordid="${record.id}" style="background:var(--accent-balance); color:black;">Post ${actionLabel}</button>
-                    <button class="manage-btn" id="sub-adj-btn-close">Close Dashboard</button>
+                    <button class="manage-btn" style="background:var(--accent-balance); color:black;" onclick="addLoanReduction(${record.id})">Post ${actionLabel}</button>
+                    <button class="manage-btn" onclick="closeLoanDashboard()">Close Dashboard</button>
                 </div>
 
                 <div class="table-wrapper" style="margin-top:15px; background:#222;">
                     <table>
                         <thead><tr><th>Transaction Date</th><th>Value Amount Applied</th><th>Control</th></tr></thead>
                         <tbody>
-                          
+                            ${tracksHtml || '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No partial tracks processed against principle pool.</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('v_records', JSON.stringify(records));
+        calculateFinances();
+        renderTable();
+        renderChart();
+    }
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        const el = document.getElementById('tab-btn-' + tabName);
+        if (el) el.classList.add('active');
+        
+        renderTable();
+    }
+
+    // Fixed & Corrected Accounting Logic Engine
+    function calculateFinances() {
+        let totalEarnings = 0, totalExpenses = 0, totalSavings = 0;
+        let activeLoanTakenBase = 0, activeLoanGivenBase = 0;
+        let trackingBalance = 0; 
+
+        records.forEach(r => {
+            let totalReduced = r.tracks ? r.tracks.reduce((sum, t) => sum + t.amount, 0) : 0;
+            
+            if (r.type === 'earning') {
+                totalEarnings += r.amount;
+                trackingBalance += r.amount; 
+            } else if (r.type === 'expense') {
+                totalExpenses += r.amount;
+                trackingBalance -= r.amount; 
+            } else if (r.type === 'loantaken') {
+                activeLoanTakenBase += (r.amount - totalReduced);
+                // FIXED: Taking a loan adds cash to wallet instantly (+ r.amount)
+                // Repaying the loan subtracts cash from wallet (- totalReduced)
+                trackingBalance += r.amount; 
+                trackingBalance -= totalReduced; 
+            } else if (r.type === 'loangiven') {
+                activeLoanGivenBase += (r.amount - totalReduced);
+                // Lending money out drops your liquid wallet cash (- r.amount)
+                // Collecting repayments restores cash back to wallet (+ totalReduced)
+                trackingBalance -= r.amount; 
+                trackingBalance += totalReduced; 
+            } else if (r.type === 'savings') {
+                totalSavings += r.amount; 
+            }
+        });
+
+        document.getElementById('sum-balance').innerText = `৳${trackingBalance.toLocaleString()}`;
+        document.getElementById('sum-earning').innerText = `৳${totalEarnings.toLocaleString()}`;
+        document.getElementById('sum-expense').innerText = `৳${totalExpenses.toLocaleString()}`;
+        document.getElementById('sum-loantaken').innerText = `৳${activeLoanTakenBase.toLocaleString()}`;
+        document.getElementById('sum-loangiven').innerText = `৳${activeLoanGivenBase.toLocaleString()}`;
+        document.getElementById('sum-savings').innerText = `৳${totalSavings.toLocaleString()}`;
+
+        return { totalExpenses, activeLoanTakenBase, activeLoanGivenBase, totalSavings, totalEarnings };
+    }
+
+    function renderTable() {
+        const container = document.getElementById('table-container');
+        
+        if (currentTab === 'categories') {
+            let catSummary = {};
+            records.forEach(r => {
+                if(!catSummary[r.category]) catSummary[r.category] = { expense: 0, loantaken: 0, loangiven: 0, savings: 0, earning: 0 };
+                if(r.type === 'loantaken' || r.type === 'loangiven') {
+                    let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                    catSummary[r.category][r.type] += (r.amount - totalReduced);
+                } else {
+                    catSummary[r.category][r.type] += r.amount;
+                }
+            });
+
+            let html = `<table><thead><tr><th>Entity Category Matrix</th><th>Expenses</th><th>Loan Taken</th><th>Loan Given</th><th>Savings</th><th>Earnings</th></tr></thead><tbody>`;
+            for (let cat in catSummary) {
+                html += `<tr>
+                    <td><strong>${cat}</strong></td>
+                    <td style="color:var(--accent-expense)">৳${catSummary[cat].expense.toLocaleString()}</td>
+                    <td style="color:var(--accent-loantaken)">৳${catSummary[cat].loantaken.toLocaleString()}</td>
+                    <td style="color:var(--accent-loangiven)">৳${catSummary[cat].loangiven.toLocaleString()}</td>
+                    <td style="color:var(--accent-savings)">৳${catSummary[cat].savings.toLocaleString()}</td>
+                    <td style="color:var(--accent-earning)">৳${catSummary[cat].earning.toLocaleString()}</td>
+                </tr>`;
+            }
+            container.innerHTML = html + '</tbody></table>';
+            return;
+        }
+
+        if (currentTab === 'yearwise') {
+            let yearSummary = {};
+            records.forEach(r => {
+                let year = r.entryDate ? r.entryDate.split('-')[0] : 'Unknown';
+                if(!yearSummary[year]) yearSummary[year] = { expense: 0, loantaken: 0, loangiven: 0, savings: 0, earning: 0 };
+                
+                if(r.type === 'loantaken' || r.type === 'loangiven') {
+                    let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                    yearSummary[year][r.type] += (r.amount - totalReduced);
+                } else {
+                    yearSummary[year][r.type] += r.amount;
+                }
+            });
+
+            let html = `<table><thead><tr><th>Calendar Fiscal Year</th><th>Expenses</th><th>Loan Taken (Net)</th><th>Loan Given (Net)</th><th>Savings</th><th>Earnings</th></tr></thead><tbody>`;
+            for (let yr in yearSummary) {
+                html += `<tr>
+                    <td><strong>${yr}</strong></td>
+                    <td style="color:var(--accent-expense)">৳${yearSummary[yr].expense.toLocaleString()}</td>
+                    <td style="color:var(--accent-loantaken)">৳${yearSummary[yr].loantaken.toLocaleString()}</td>
+                    <td style="color:var(--accent-loangiven)">৳${yearSummary[yr].loangiven.toLocaleString()}</td>
+                    <td style="color:var(--accent-savings)">৳${yearSummary[yr].savings.toLocaleString()}</td>
+                    <td style="color:var(--accent-earning)">৳${yearSummary[yr].earning.toLocaleString()}</td>
+                </tr>`;
+            }
+            container.innerHTML = html + '</tbody></table>';
+            return;
+        }
+
+        let filtered = records.filter(r => r.type === currentTab);
+        let isLoanType = currentTab === 'loantaken' || currentTab === 'loangiven';
+
+        let html = `<table><thead><tr>
+            <th>Date</th>
+            <th>Category / Target</th>
+            <th>Principal Pool</th>
+            ${isLoanType ? '<th>Remaining Balance</th>' : ''}
+            <th>Controls Mapping</th>
+        </tr></thead><tbody>`;
+
+        filtered.forEach(r => {
+            let innerLoanCalcHtml = '';
+            let secondaryDashboardAction = '';
+            
+            if(isLoanType) {
+                let totalReduced = r.tracks.reduce((sum, t) => sum + t.amount, 0);
+                let rem = r.amount - totalReduced;
+                innerLoanCalcHtml = `<td>৳${rem.toLocaleString()} ${rem===0 ? '<span style="color:var(--accent-balance); font-size:0.75rem;">[Mitigated]</span>':''}</td>`;
+                secondaryDashboardAction = `<button class="manage-btn" onclick="showLoanDashboard(${r.id})">Adjustments Ledger</button>`;
+            }
+
+            html += `<tr>
+                <td>${r.entryDate}</td>
+                <td>${r.category}</td>
+                <td>৳${r.amount.toLocaleString()}</td>
+                ${innerLoanCalcHtml}
+                <td>
+                    ${secondaryDashboardAction}
+                    <button class="edit-btn" onclick="startEdit(${r.id})">Edit</button>
+                    <button class="delete-btn" onclick="deleteRecord(${r.id})">Delete</button>
+                </td>
+            </tr>`;
+        });
+
+        container.innerHTML = html + '</tbody></table>';
+    }
+
+    function renderChart() {
+        const d = calculateFinances();
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const chartData = [d.totalExpenses, d.activeLoanTakenBase, d.activeLoanGivenBase, d.totalSavings, d.totalEarnings];
+
+        if (myChart) {
+            myChart.data.datasets[0].data = chartData;
+            myChart.update();
+        } else {
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Expenses', 'Loans Taken', 'Loans Given', 'Savings', 'Earnings'],
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: ['#ff6b6b', '#fcc419', '#cc5de8', '#4dadf7', '#51cf66'],
+                        borderWidth: 2,
+                        borderColor: '#1e1e1e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#e0e0e0', font: { size: 11 } } } }
+                }
+            });
+        }
+    }
+
+    adjustFormFields();
+</script>
+</body>
+</html>
